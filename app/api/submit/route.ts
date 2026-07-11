@@ -2,12 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 
 function b64(s: string) { return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
 
-function uint8ToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
-}
-
 async function jwtToken(scope: string): Promise<string | null> {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const rawKey = process.env.GOOGLE_PRIVATE_KEY;
@@ -160,6 +154,46 @@ async function appendToSheet(data: Record<string, any>, invoiceId: string) {
   }
 }
 
+async function uploadToDrive(pdfBytes: Uint8Array, filename: string): Promise<boolean> {
+  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+  if (!folderId) return false;
+
+  const token = await jwtToken('https://www.googleapis.com/auth/drive.file');
+  if (!token) return false;
+
+  const ac = new AbortController();
+  const to = setTimeout(() => ac.abort(), 10000);
+  try {
+    const createResp = await fetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: filename, parents: [folderId] }),
+      signal: ac.signal,
+    });
+    const createData: any = await createResp.json();
+    if (!createResp.ok) {
+      console.error('Drive metadata create failed:', createResp.status, JSON.stringify(createData));
+      return false;
+    }
+
+    await fetch(
+      `https://www.googleapis.com/upload/drive/v3/files/${createData.id}?uploadType=media`,
+      {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/pdf' },
+        body: pdfBytes,
+        signal: ac.signal,
+      }
+    );
+    return true;
+  } catch (e: any) {
+    console.error('Drive upload error:', e.message);
+    return false;
+  } finally {
+    clearTimeout(to);
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -227,55 +261,7 @@ export async function POST(request: NextRequest) {
 
     // Fire background tasks — never block the response
     appendToSheet(body, invoiceId).catch(() => {});
-
-    (async () => {
-      const apiKey = process.env.SENDGRID_API_KEY;
-      const fromEmail = process.env.GMAIL_USER;
-      const adminEmail = process.env.ADMIN_EMAIL;
-      if (!apiKey || !fromEmail || !adminEmail || !adminPdfBytes) return;
-
-      try {
-        const title = isMember ? 'New Club Membership' : 'New Course Registration';
-        const rows = isMember ? `
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Invoice ID</td><td style="padding:8px;border:1px solid #ddd">${invoiceId}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Name</td><td style="padding:8px;border:1px solid #ddd">${name}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Phone</td><td style="padding:8px;border:1px solid #ddd">${phone}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Amount</td><td style="padding:8px;border:1px solid #ddd">${amount} BDT</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Payment</td><td style="padding:8px;border:1px solid #ddd">${paymentMethod.toUpperCase()}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Transaction ID</td><td style="padding:8px;border:1px solid #ddd">${transactionId}</td></tr>
-        ` : `
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Invoice ID</td><td style="padding:8px;border:1px solid #ddd">${invoiceId}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Name</td><td style="padding:8px;border:1px solid #ddd">${name}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Phone</td><td style="padding:8px;border:1px solid #ddd">${phone}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Address</td><td style="padding:8px;border:1px solid #ddd">${address}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Course</td><td style="padding:8px;border:1px solid #ddd">${courseName}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">DU Student</td><td style="padding:8px;border:1px solid #ddd">${isDuStudent ? 'Yes' : 'No'}</td></tr>
-          ${Boolean(isDuStudent) ? `
-            <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Session</td><td style="padding:8px;border:1px solid #ddd">${academicSession}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Department</td><td style="padding:8px;border:1px solid #ddd">${department}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Hall</td><td style="padding:8px;border:1px solid #ddd">${hallName}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Reg ID</td><td style="padding:8px;border:1px solid #ddd">${duRegistrationId}</td></tr>
-          ` : ''}
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Amount</td><td style="padding:8px;border:1px solid #ddd">${amount} BDT</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Payment</td><td style="padding:8px;border:1px solid #ddd">${paymentMethod.toUpperCase()}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Transaction ID</td><td style="padding:8px;border:1px solid #ddd">${transactionId}</td></tr>
-        `;
-
-        await fetch('https://api.sendgrid.com/v3/mail/send', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            personalizations: [{ to: [{ email: adminEmail }] }],
-            from: { email: fromEmail, name: 'Provatferi Portal' },
-            subject: isMember ? `Member Recruitment Form (${invoiceId})` : `PCR2026 (${courseName}) - ${invoiceId}`,
-            content: [{ type: 'text/html', value: `<h2 style="color:#9c4121">${title}</h2><table style="border-collapse:collapse;width:100%;font-family:sans-serif;">${rows}</table><p style="margin-top:16px">Admin invoice PDF is attached.</p>` }],
-            attachments: [{ content: uint8ToBase64(adminPdfBytes), filename: attachmentFilename, type: 'application/pdf' }],
-          }),
-        });
-      } catch (e: any) {
-        console.error('Email send failed:', e.message);
-      }
-    })();
+    if (adminPdfBytes) uploadToDrive(adminPdfBytes, attachmentFilename).catch(() => {});
 
     return new Response(clientPdfBytes as any, {
       status: 200,
