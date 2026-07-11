@@ -183,13 +183,7 @@ export async function POST(request: NextRequest) {
     const invoiceId = await getSheetInvoiceId(isMember);
 
     const { generateClientInvoice, generateAdminInvoice, generateMemberInvoice } = await import('../../utils/invoiceGenerator');
-
-    let logoBytes: Uint8Array | undefined;
-    try {
-      const logoUrl = new URL('/logo.png', request.url).toString();
-      const logoResp = await fetch(logoUrl);
-      if (logoResp.ok) logoBytes = new Uint8Array(await logoResp.arrayBuffer());
-    } catch {}
+    const logoBytes = (await import('../../utils/logo')).default();
 
     const baseInvoiceData = {
       name,
