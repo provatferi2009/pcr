@@ -1,0 +1,39 @@
+{
+  "name": "pcr",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+  },
+  "dependencies": {
+    "@fontsource/dancing-script": "^5.2.8",
+    "@fontsource/noto-serif-bengali": "^5.2.10",
+    "@opennextjs/cloudflare": "^1.20.1",
+    "@pdf-lib/fontkit": "^1.1.1",
+    "@types/nodemailer": "^8.0.1",
+    "googleapis": "^173.0.0",
+    "lucide-react": "^1.23.0",
+    "next": "16.2.10",
+    "nodemailer": "^9.0.3",
+    "pdf-lib": "^1.17.1",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.10",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "wrangler": "^4.110.0"
+  }
+}

@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #9c4121;
+  --color-brand-primary-hover: #823419;
+  --color-brand-primary-light: #fbf3f0;
+  --color-brand-primary-dark: #6e2a12;
+  --color-brand-secondary: #f0a824;
+  --color-brand-secondary-hover: #d99318;
+  --color-brand-secondary-light: #fefcf3;
+}
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-noto-bengali), serif;
+  min-height: 100vh;
+}
+
+/* Fallback utilities to ensure brand colors render correctly regardless of build cache */
+.bg-brand-primary {
+  background-color: #9c4121 !important;
+}
+.hover\:bg-brand-primary-hover:hover {
+  background-color: #823419 !important;
+}
+.bg-brand-primary-light {
+  background-color: #fbf3f0 !important;
+}
+.bg-brand-secondary {
+  background-color: #f0a824 !important;
+}
+.text-brand-primary {
+  color: #9c4121 !important;
+}
+.text-brand-primary-dark {
+  color: #6e2a12 !important;
+}
+.text-brand-secondary {
+  color: #f0a824 !important;
+}
+.border-brand-primary-light {
+  border-color: #fbf3f0 !important;
+}
+.focus\:ring-brand-primary-light:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  --tw-ring-color: #fbf3f0 !important;
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-ring-offset-width, 0) var(--tw-ring-offset-color, #fff) var(--tw-ring-color) !important;
+}
+.focus\:border-brand-primary:focus {
+  border-color: #9c4121 !important;
+}
+.focus\:ring-brand-primary:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  --tw-ring-color: #9c4121 !important;
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-ring-offset-width, 0) var(--tw-ring-offset-color, #fff) var(--tw-ring-color) !important;
+}
+
+/* Ensure color overrides are loaded correctly for inputs/selects on light background */
+input, select, textarea {
+  color: #0f172a !important; /* slate-900 */
+}
+input::placeholder {
+  color: #64748b !important; /* slate-500 placeholder */
+}
+option {
+  color: #0f172a !important;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.35s ease-out both;
+}
