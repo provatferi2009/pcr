@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 
 function b64(s: string) { return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
 
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
 async function jwtToken(scope: string): Promise<string | null> {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const rawKey = process.env.GOOGLE_PRIVATE_KEY;
@@ -41,7 +47,7 @@ async function getSheetInvoiceId(isMember: boolean): Promise<string> {
   const token = await jwtToken('https://www.googleapis.com/auth/spreadsheets');
   if (!token) return isMember ? 'M01' : `${new Date().getFullYear()}01`;
 
-  const sheetName = isMember ? 'member recruitment' : 'course recruitment';
+  const sheetName = isMember ? 'Member Recruitment' : 'Course Recruitment';
   const currentYear = new Date().getFullYear();
 
   const ac = new AbortController();
@@ -84,7 +90,7 @@ async function appendToSheet(data: Record<string, any>, invoiceId: string) {
   if (!token) return;
 
   const isMember = data.formMode === 'member';
-  const sheetName = isMember ? 'member recruitment' : 'course recruitment';
+  const sheetName = isMember ? 'Member Recruitment' : 'Course Recruitment';
   const fullAmt = Number(data.fullAmount);
   const paidAmt = Number(data.amount);
   const dueAmt = fullAmt - paidAmt;
@@ -147,8 +153,8 @@ async function appendToSheet(data: Record<string, any>, invoiceId: string) {
         signal: ac.signal,
       }
     );
-  } catch {
-    // silent fail
+  } catch (e: any) {
+    console.error('appendToSheet failed:', e.message);
   } finally {
     clearTimeout(to);
   }
@@ -223,18 +229,12 @@ export async function POST(request: NextRequest) {
     appendToSheet(body, invoiceId).catch(() => {});
 
     (async () => {
-      const gmailUser = process.env.GMAIL_USER;
-      const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
+      const apiKey = process.env.SENDGRID_API_KEY;
+      const fromEmail = process.env.GMAIL_USER;
       const adminEmail = process.env.ADMIN_EMAIL;
-      if (!gmailUser || !gmailAppPassword || !adminEmail || !adminPdfBytes) return;
+      if (!apiKey || !fromEmail || !adminEmail || !adminPdfBytes) return;
 
       try {
-        const nodemailer = await import('nodemailer');
-        const transporter = nodemailer.default.createTransport({
-          service: 'gmail',
-          auth: { user: gmailUser, pass: gmailAppPassword },
-        });
-
         const title = isMember ? 'New Club Membership' : 'New Course Registration';
         const rows = isMember ? `
           <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Invoice ID</td><td style="padding:8px;border:1px solid #ddd">${invoiceId}</td></tr>
@@ -261,18 +261,16 @@ export async function POST(request: NextRequest) {
           <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold">Transaction ID</td><td style="padding:8px;border:1px solid #ddd">${transactionId}</td></tr>
         `;
 
-        await transporter.sendMail({
-          from: `"Provatferi Portal" <${gmailUser}>`,
-          to: adminEmail,
-          subject: isMember ? `Member Recruitment Form (${invoiceId})` : `PCR2026 (${courseName}) - ${invoiceId}`,
-          html: `<h2 style="color:#9c4121">${title}</h2>
-            <table style="border-collapse:collapse;width:100%;font-family:sans-serif;">${rows}</table>
-            <p style="margin-top:16px">Admin invoice PDF is attached.</p>`,
-          attachments: [{
-            filename: attachmentFilename,
-            content: Buffer.from(adminPdfBytes),
-            contentType: 'application/pdf',
-          }],
+        await fetch('https://api.sendgrid.com/v3/mail/send', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            personalizations: [{ to: [{ email: adminEmail }] }],
+            from: { email: fromEmail, name: 'Provatferi Portal' },
+            subject: isMember ? `Member Recruitment Form (${invoiceId})` : `PCR2026 (${courseName}) - ${invoiceId}`,
+            content: [{ type: 'text/html', value: `<h2 style="color:#9c4121">${title}</h2><table style="border-collapse:collapse;width:100%;font-family:sans-serif;">${rows}</table><p style="margin-top:16px">Admin invoice PDF is attached.</p>` }],
+            attachments: [{ content: uint8ToBase64(adminPdfBytes), filename: attachmentFilename, type: 'application/pdf' }],
+          }),
         });
       } catch (e: any) {
         console.error('Email send failed:', e.message);
