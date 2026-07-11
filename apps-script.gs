@@ -56,7 +56,10 @@ function doPost(e) {
       sheet.appendRow(row);
 
       if (data.pdfBase64 && data.filename) {
-        const folder = DriveApp.getFolderById(data.folderId);
+        const parent = DriveApp.getFolderById(data.folderId);
+        const subName = data.isMember ? 'Member Invoices' : 'Course Invoices';
+        const sub = parent.getFoldersByName(subName);
+        const folder = sub.hasNext() ? sub.next() : parent.createFolder(subName);
         const decoded = Utilities.base64Decode(data.pdfBase64);
         folder.createFile(Utilities.newBlob(decoded, 'application/pdf', data.filename));
       }
