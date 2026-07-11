@@ -177,12 +177,7 @@ export default function Home() {
       setDownloadUrl(blobUrl);
       setDownloadName(filename);
 
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      try { window.open(blobUrl, '_blank'); } catch {} 
 
       setProgress(100);
       setSuccess(true);
@@ -262,26 +257,29 @@ export default function Home() {
           )}
 
           {formMode && success && (
-            <div className="mb-8 p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-start gap-4 animate-fade-in">
-              <CheckCircle2 className="w-6 h-6 mt-0.5 shrink-0 text-emerald-600" />
-              <div>
-                <h4 className="font-bold text-base text-emerald-900">রেজিস্ট্রেশন সফলভাবে সম্পন্ন হয়েছে!</h4>
-                <p className="text-sm text-emerald-800/90 mt-1">
-                  {formMode === 'member'
-                    ? 'আপনার সদস্যপদ রেজিস্ট্রেশন সফলভাবে সম্পন্ন হয়েছে। আপনার কপি ডাউনলোড করা শুরু হয়েছে।'
-                    : 'আপনার পেমেন্ট ভেরিফিকেশন এবং এডমিন ইনভয়েস সফলভাবে লগ করা হয়েছে। আপনার কপি ডাউনলোড করা শুরু হয়েছে।'}
-                </p>
-                {downloadUrl && (
+            <div className="mb-8 p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 animate-fade-in">
+              <div className="flex items-start gap-4">
+                <CheckCircle2 className="w-6 h-6 mt-0.5 shrink-0 text-emerald-600" />
+                <div>
+                  <h4 className="font-bold text-base text-emerald-900">রেজিস্ট্রেশন সফলভাবে সম্পন্ন হয়েছে!</h4>
+                  <p className="text-sm text-emerald-800/90 mt-1">
+                    আপনার রসিদ নিচে দেখা যাচ্ছে। ডাউনলোড করতে নিচের বাটনে ক্লিক করুন।
+                  </p>
+                </div>
+              </div>
+              {downloadUrl && (
+                <>
+                  <embed src={downloadUrl} type="application/pdf" className="w-full h-64 mt-4 rounded-xl border border-emerald-200" />
                   <a
                     href={downloadUrl}
                     download={downloadName}
-                    className="inline-flex items-center gap-2 mt-4 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl transition-all shadow-md shadow-emerald-200"
+                    className="flex items-center justify-center gap-2 mt-4 w-full text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl transition-all shadow-lg shadow-emerald-300"
                   >
-                    <Download className="w-4 h-4" />
-                    রসিদটি পুনরায় ডাউনলোড করুন
+                    <Download className="w-5 h-5" />
+                    রসিদ ডাউনলোড করুন
                   </a>
-                )}
-              </div>
+                </>
+              )}
             </div>
           )}
 

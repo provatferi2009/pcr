@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="invoice-${invoiceId}.pdf"`,
+        'Content-Disposition': `inline; filename="invoice-${invoiceId}.pdf"`,
       },
     });
   } catch (error: any) {
