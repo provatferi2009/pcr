@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 
 function b64(s: string) { return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
 
+async function pemToKey(pem: string): Promise<CryptoKey> {
+  const b64 = pem.replace('-----BEGIN PRIVATE KEY-----', '').replace('-----END PRIVATE KEY-----', '').replace(/\s/g, '');
+  const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  return await crypto.subtle.importKey('pkcs8', bin, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+}
+
 async function jwtToken(scope: string): Promise<string | null> {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const rawKey = process.env.GOOGLE_PRIVATE_KEY;
@@ -12,11 +18,15 @@ async function jwtToken(scope: string): Promise<string | null> {
   const jwt = b64(JSON.stringify({ alg: 'RS256', typ: 'JWT' })) + '.' +
     b64(JSON.stringify({ iss: email, scope, aud: 'https://oauth2.googleapis.com/token', exp: now + 3600, iat: now }));
 
-  const nodeCrypto = await import('crypto');
-  const signer = nodeCrypto.createSign('sha256');
-  signer.update(jwt);
-  signer.end();
-  const sig = b64(String.fromCharCode(...new Uint8Array(signer.sign(privateKey))));
+  let sig: string;
+  try {
+    const key = await pemToKey(privateKey);
+    const signature = await crypto.subtle.sign({ name: 'RSASSA-PKCS1-v1_5' }, key, new TextEncoder().encode(jwt));
+    sig = b64(String.fromCharCode(...new Uint8Array(signature)));
+  } catch (e: any) {
+    console.error('JWT sign failed:', e.message);
+    return null;
+  }
 
   const ac = new AbortController();
   const to = setTimeout(() => ac.abort(), 5000);
