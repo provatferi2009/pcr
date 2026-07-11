@@ -181,6 +181,7 @@ export default function Home() {
 
       setProgress(100);
       setSuccess(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
 
       setFormData({
         name: '',
