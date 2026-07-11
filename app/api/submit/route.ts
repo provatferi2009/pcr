@@ -181,7 +181,7 @@ async function uploadToDrive(pdfBytes: Uint8Array, filename: string): Promise<bo
       {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/pdf' },
-        body: pdfBytes,
+        body: pdfBytes as any,
         signal: ac.signal,
       }
     );
