@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 2: Send PDF + data to Apps Script for sheet append + Drive upload
-    callAppsScript({
+    const saveResult = await callAppsScript({
       action: 'save', isMember, invoiceId,
       name, address, phone, service, amount, isDuStudent,
       academicSession, department, hallName, duRegistrationId,
@@ -104,7 +104,10 @@ export async function POST(request: NextRequest) {
       folderId: process.env.GOOGLE_DRIVE_FOLDER_ID,
       pdfBase64: adminPdfBytes ? uint8ToBase64(adminPdfBytes) : null,
       filename: attachmentFilename,
-    }).catch(() => {});
+    });
+    if (!saveResult?.success) {
+      console.error('Save to sheet/Drive failed:', JSON.stringify(saveResult));
+    }
 
     return new Response(clientPdfBytes as any, {
       status: 200,
